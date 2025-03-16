@@ -17,6 +17,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\RivalsGG.API\RivalsGG.API.csproj" />
+    <ProjectReference Include="..\RivalsGG.BLL\RivalsGG.BLL.csproj" />
+    <ProjectReference Include="..\RivalsGG.Core\RivalsGG.Core.csproj" />
+    <ProjectReference Include="..\RivalsGG.DAL\RivalsGG.DAL.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
