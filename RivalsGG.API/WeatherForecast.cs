@@ -1,4 +1,4 @@
-namespace RivalsGGAPI
+namespace RivalsGG.API
 {
     public class WeatherForecast
     {

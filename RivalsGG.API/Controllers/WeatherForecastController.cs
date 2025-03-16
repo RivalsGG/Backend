@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace RivalsGGAPI.Controllers;
+namespace RivalsGG.API.Controllers;
 
 [ApiController]
 [Route("[controller]")]
