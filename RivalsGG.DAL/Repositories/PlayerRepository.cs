@@ -1,12 +1,14 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using RivalsGG.Core;
+using RivalsGG.Core.Interfaces;
+using RivalsGG.Core.Models;
+using RivalsGG.DAL.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RivalsGG.DAL
+namespace RivalsGG.DAL.Repositories
 {
     public class PlayerRepository : IPlayerRepository
     {

@@ -5,9 +5,9 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using RivalsGG.Core;
+using RivalsGG.Core.Models;
 
-namespace RivalsGG.DAL
+namespace RivalsGG.DAL.Data
 {
     public class PlayerDbContext : DbContext
     {

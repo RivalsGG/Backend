@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using RivalsGG.Core;
-using RivalsGG.DAL;
-using RivalsGG.BLL;
+using RivalsGG.DAL.Data;
+using RivalsGG.Core.Interfaces;
+using RivalsGG.DAL.Repositories;
+using RivalsGG.BLL.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

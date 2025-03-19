@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RivalsGG.Core
+namespace RivalsGG.Core.Models
 {
     public class Player
     {

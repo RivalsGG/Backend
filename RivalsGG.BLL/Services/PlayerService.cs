@@ -1,11 +1,12 @@
-﻿using RivalsGG.Core;
+﻿using RivalsGG.Core.Interfaces;
+using RivalsGG.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RivalsGG.BLL
+namespace RivalsGG.BLL.Services
 {
     public class PlayerService : IPlayerService
     {

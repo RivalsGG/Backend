@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using RivalsGG.Core;
+using RivalsGG.Core.Interfaces;
+using RivalsGG.Core.Models;
 
 namespace RivalsGG.API.Controllers
 {
