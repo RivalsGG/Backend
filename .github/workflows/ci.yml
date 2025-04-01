@@ -18,11 +18,43 @@ jobs:
       with:
         dotnet-version: '8.0.x'
     
+    - name: Find solution or project files
+      run: find . -name "*.sln" -o -name "*.csproj"
+      
     - name: Restore dependencies
-      run: dotnet restore
+      run: |
+        # Locate the solution or main project file
+        SOLUTION_FILE=$(find . -name "*.sln" | head -n 1)
+        if [ -z "$SOLUTION_FILE" ]; then
+          # If no solution file, try to find the main project file
+          PROJECT_FILE=$(find . -name "*.csproj" | head -n 1)
+          if [ -z "$PROJECT_FILE" ]; then
+            echo "No .sln or .csproj file found"
+            exit 1
+          fi
+          dotnet restore "$PROJECT_FILE"
+        else
+          dotnet restore "$SOLUTION_FILE"
+        fi
     
     - name: Build
-      run: dotnet build --no-restore
+      run: |
+        SOLUTION_FILE=$(find . -name "*.sln" | head -n 1)
+        if [ -z "$SOLUTION_FILE" ]; then
+          PROJECT_FILE=$(find . -name "*.csproj" | head -n 1)
+          dotnet build "$PROJECT_FILE" --no-restore
+        else
+          dotnet build "$SOLUTION_FILE" --no-restore
+        fi
     
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: |
+        TEST_PROJECTS=$(find . -name "*Tests.csproj" -o -name "*Test.csproj")
+        if [ -z "$TEST_PROJECTS" ]; then
+          echo "No test projects found, skipping tests"
+        else
+          for TEST_PROJECT in $TEST_PROJECTS; do
+            echo "Testing $TEST_PROJECT"
+            dotnet test "$TEST_PROJECT" --no-build --verbosity normal
+          done
+        fi
