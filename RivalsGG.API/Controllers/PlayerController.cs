@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using RivalsGG.Core.Interfaces;
 using RivalsGG.Core.Models;
+using RivalsGG.Core.DTOs;
 
 namespace RivalsGG.API.Controllers
 {
@@ -16,14 +17,14 @@ namespace RivalsGG.API.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Player>>> GetPlayers()
+        public async Task<ActionResult<IEnumerable<PlayerDTO>>> GetPlayers()
         {
             var players = await _playerService.GetAllPlayersAsync();
             return Ok(players);
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Player>> GetPlayer(int id)
+        public async Task<ActionResult<PlayerDTO>> GetPlayer(int id)
         {
             var player = await _playerService.GetPlayerByIdAsync(id);
 
@@ -36,29 +37,43 @@ namespace RivalsGG.API.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Player>> CreatePlayer(Player player)
+        public async Task<ActionResult<PlayerDTO>> CreatePlayer(PlayerDTO playerDto)
         {
-            var createdPlayer = await _playerService.CreatePlayerAsync(player);
+            var createdPlayer = await _playerService.CreatePlayerAsync(playerDto);
             return CreatedAtAction(nameof(GetPlayer), new { id = createdPlayer.PlayerId }, createdPlayer);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdatePlayer(int id, Player player)
+        public async Task<IActionResult> UpdatePlayer(int id, PlayerDTO playerDto)
         {
-            if (id != player.PlayerId)
+            if (id != playerDto.PlayerId)
             {
-                return BadRequest();
+                playerDto.PlayerId = id;
             }
 
-            await _playerService.UpdatePlayerAsync(player);
-            return NoContent();
+            try
+            {
+                await _playerService.UpdatePlayerAsync(playerDto);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePlayer(int id)
         {
-            await _playerService.DeletePlayerAsync(id);
-            return NoContent();
+            try
+            {
+                await _playerService.DeletePlayerAsync(id);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(); 
+            }
         }
     }
 }
