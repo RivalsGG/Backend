@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Moq;
 using RivalsGG.API.Controllers;
+using RivalsGG.Core.DTOs;
 using RivalsGG.Core.Interfaces;
 using RivalsGG.Core.Models;
 using System;
@@ -26,11 +27,11 @@ namespace RivalsGG.Test
         public async Task GetPlayers_ReturnsOkWithPlayers()
         {
             // Arrange
-            var players = new List<Player>
-        {
-            new Player { PlayerId = 1, PlayerName = "Player1" },
-            new Player { PlayerId = 2, PlayerName = "Player2" }
-        };
+            var players = new List<PlayerDTO>
+            {
+                new PlayerDTO { PlayerId = 1, PlayerName = "Player1", PlayerColor = "#FF0000" },
+                new PlayerDTO { PlayerId = 2, PlayerName = "Player2", PlayerColor = "#00FF00" }
+            };
 
             _mockService.Setup(service => service.GetAllPlayersAsync())
                 .ReturnsAsync(players);
@@ -40,7 +41,7 @@ namespace RivalsGG.Test
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedPlayers = Assert.IsAssignableFrom<IEnumerable<Player>>(okResult.Value);
+            var returnedPlayers = Assert.IsAssignableFrom<IEnumerable<PlayerDTO>>(okResult.Value);
             Assert.Equal(2, returnedPlayers.Count());
         }
 
@@ -48,7 +49,7 @@ namespace RivalsGG.Test
         public async Task GetPlayer_WithValidId_ReturnsOkWithPlayer()
         {
             // Arrange
-            var player = new Player { PlayerId = 1, PlayerName = "TestPlayer" };
+            var player = new PlayerDTO { PlayerId = 1, PlayerName = "TestPlayer", PlayerColor = "#FF0000" };
 
             _mockService.Setup(service => service.GetPlayerByIdAsync(1))
                 .ReturnsAsync(player);
@@ -58,7 +59,7 @@ namespace RivalsGG.Test
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedPlayer = Assert.IsType<Player>(okResult.Value);
+            var returnedPlayer = Assert.IsType<PlayerDTO>(okResult.Value);
             Assert.Equal(1, returnedPlayer.PlayerId);
         }
 
@@ -67,7 +68,7 @@ namespace RivalsGG.Test
         {
             // Arrange
             _mockService.Setup(service => service.GetPlayerByIdAsync(999))
-                .ReturnsAsync((Player)null);
+                .ReturnsAsync((PlayerDTO)null);
 
             // Act
             var result = await _controller.GetPlayer(999);
@@ -80,10 +81,20 @@ namespace RivalsGG.Test
         public async Task CreatePlayer_ReturnsCreatedAtAction()
         {
             // Arrange
-            var playerToCreate = new Player { PlayerName = "NewPlayer" };
-            var createdPlayer = new Player { PlayerId = 1, PlayerName = "NewPlayer" };
+            var playerToCreate = new PlayerDTO
+            {
+                PlayerName = "NewPlayer",
+                PlayerColor = "#FF0000"
+            };
 
-            _mockService.Setup(service => service.CreatePlayerAsync(playerToCreate))
+            var createdPlayer = new PlayerDTO
+            {
+                PlayerId = 1,
+                PlayerName = "NewPlayer",
+                PlayerColor = "#FF0000"
+            };
+
+            _mockService.Setup(service => service.CreatePlayerAsync(It.IsAny<PlayerDTO>()))
                 .ReturnsAsync(createdPlayer);
 
             // Act
@@ -94,8 +105,44 @@ namespace RivalsGG.Test
             Assert.Equal(nameof(PlayerController.GetPlayer), createdAtActionResult.ActionName);
             Assert.Equal(1, createdAtActionResult.RouteValues["id"]);
 
-            var returnedPlayer = Assert.IsType<Player>(createdAtActionResult.Value);
+            var returnedPlayer = Assert.IsType<PlayerDTO>(createdAtActionResult.Value);
             Assert.Equal(1, returnedPlayer.PlayerId);
+        }
+
+        [Fact]
+        public async Task UpdatePlayer_WithValidId_ReturnsNoContent()
+        {
+            // Arrange
+            var playerDto = new PlayerDTO
+            {
+                PlayerId = 1,
+                PlayerName = "UpdatedPlayer",
+                PlayerColor = "#FF0000"
+            };
+
+            _mockService.Setup(service => service.UpdatePlayerAsync(It.IsAny<PlayerDTO>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.UpdatePlayer(1, playerDto);
+
+            // Assert
+            Assert.IsType<NoContentResult>(result);
+        }
+
+        [Fact]
+        public async Task DeletePlayer_ReturnsNoContent()
+        {
+            // Arrange
+            int playerId = 1;
+            _mockService.Setup(service => service.DeletePlayerAsync(playerId))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.DeletePlayer(playerId);
+
+            // Assert
+            Assert.IsType<NoContentResult>(result);
         }
     }
 }
