@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+.github
+
+# Docker
+.docker
+.dockerignore
+
+# Visual Studio files
+.vs/
+**/*.user
+**/*.userosscache
+**/*.sln.docstates
+.vscode/
+
+# Build results
+**/[Dd]ebug/
+**/[Dd]ebugPublic/
+**/[Rr]elease/
+**/[Rr]eleases/
+**/x64/
+**/x86/
+**/build/
+**/bld/
+**/[Bb]in/
+**/[Oo]bj/
+**/[Ll]og/
+**/[Ll]ogs/
+
+# Test results
+**/TestResults/
+**/[Tt]est[Rr]esult*/
+**/*.coverage
+**/*.coveragexml
+**/coverage/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# NuGet
+**/*.nupkg
+**/packages/
+
+# MSTest test Results
+**/TestResults/
+
+# Node.js/npm
+**/node_modules/
+**/npm-debug.log
+
+# Documentation
+README.md
