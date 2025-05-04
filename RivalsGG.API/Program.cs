@@ -26,6 +26,7 @@ builder.Services.AddDbContext<PlayerDbContext>(options =>
 
 builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
 builder.Services.AddScoped<IPlayerService, PlayerService>();
+builder.Services.AddHttpClient<MarvelApiClient>();
 
 builder.Services.AddCors(options =>
 {
