@@ -20,7 +20,6 @@ namespace RivalsGG.BLL.Services
             _apiKey = configuration["MarvelRivalsApi:ApiKey"] ??
                      throw new InvalidOperationException("Marvel Rivals API key is not configured");
 
-            // Base URL and default headers
             _httpClient.BaseAddress = new Uri("https://marvelrivalsapi.com/api/v1/");
             _httpClient.DefaultRequestHeaders.Add("x-api-key", _apiKey);
         }
