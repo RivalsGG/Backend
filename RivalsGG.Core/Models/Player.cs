@@ -13,5 +13,10 @@ namespace RivalsGG.Core.Models
         public string PlayerAuthId { get; set; }
         public string PlayerIcon { get; set; }
         public string PlayerColor { get; set; }
+
+        public long Uid { get; set; }
+        public string Level { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public PlayerInfo Info { get; set; } = new PlayerInfo();
     }
 }
