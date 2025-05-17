@@ -13,21 +13,27 @@ namespace RivalsGG.Core.Models
         public long Uid { get; set; }
 
         [JsonPropertyName("username")]
-        public string Username { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
-        [JsonPropertyName("avatar")]
-        public string Avatar { get; set; } = string.Empty;
+        [JsonPropertyName("rank")]
+        public string Rank { get; set; } = string.Empty;
 
         [JsonPropertyName("level")]
         public int Level { get; set; }
 
-        [JsonPropertyName("region")]
-        public string Region { get; set; } = string.Empty;
+        [JsonPropertyName("winrate")]
+        public decimal Winrate { get; set; }
 
-        [JsonPropertyName("stats")]
-        public PlayerStats Stats { get; set; } = new PlayerStats();
+        [JsonPropertyName("matches")]
+        public int Matches { get; set; }
 
-        [JsonPropertyName("heroes")]
-        public Dictionary<string, HeroStats> Heroes { get; set; } = new Dictionary<string, HeroStats>();
+        [JsonPropertyName("wins")]
+        public int Wins { get; set; }
+
+        [JsonPropertyName("losses")]
+        public int Losses { get; set; }
+
+        [JsonIgnore]
+        public bool HasData => !string.IsNullOrEmpty(Name) && (Matches > 0 || Level > 0);
     }
 }
