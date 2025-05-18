@@ -9,22 +9,24 @@ namespace RivalsGG.Core.Models
 {
     public class HeroStats
     {
-        [JsonPropertyName("name")]
-        public string Name { get; set; } = string.Empty;
+        // Not for free api plan
 
-        [JsonPropertyName("matches")]
-        public int Matches { get; set; }
+        //[JsonPropertyName("name")]
+        //public string Name { get; set; } = string.Empty;
 
-        [JsonPropertyName("wins")]
-        public int Wins { get; set; }
+        //[JsonPropertyName("matches")]
+        //public int Matches { get; set; }
 
-        [JsonPropertyName("losses")]
-        public int Losses { get; set; }
+        //[JsonPropertyName("wins")]
+        //public int Wins { get; set; }
 
-        [JsonPropertyName("winrate")]
-        public decimal Winrate { get; set; }
+        //[JsonPropertyName("losses")]
+        //public int Losses { get; set; }
 
-        [JsonPropertyName("playtime")]
-        public long Playtime { get; set; }
+        //[JsonPropertyName("winrate")]
+        //public decimal Winrate { get; set; }
+
+        //[JsonPropertyName("playtime")]
+        //public long Playtime { get; set; }
     }
 }
