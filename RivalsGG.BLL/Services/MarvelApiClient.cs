@@ -123,13 +123,103 @@ namespace RivalsGG.BLL.Services
                 }
                 catch
                 {
-                   
+
                 }
 
-                throw; 
+                throw;
             }
         }
+        public async Task<(bool Success, string Message)> RequestPlayerDataUpdate(string uid)
+        {
+            try
+            {
+                _logger?.LogInformation($"Requesting data update for player with UID {uid}");
 
+                var endpoint = $"api/v1/player/{uid}/update";
+                var response = await _httpClient.GetAsync(endpoint);
+
+                var content = await response.Content.ReadAsStringAsync();
+
+                // If the request was successful, parse the response
+                if (response.IsSuccessStatusCode)
+                {
+                    using (JsonDocument doc = JsonDocument.Parse(content))
+                    {
+                        bool success = false;
+                        string message = "Unknown response";
+
+                        if (doc.RootElement.TryGetProperty("success", out JsonElement successElement) &&
+                            successElement.ValueKind == JsonValueKind.True)
+                        {
+                            success = true;
+                        }
+
+                        if (doc.RootElement.TryGetProperty("message", out JsonElement messageElement) &&
+                            messageElement.ValueKind == JsonValueKind.String)
+                        {
+                            message = messageElement.GetString() ?? string.Empty;
+                        }
+
+                        _logger?.LogInformation($"Update request for player {uid}: {(success ? "Success" : "Failed")} - {message}");
+                        return (success, message);
+                    }
+                }
+                else
+                {
+                    // Handle the specific error cases based on status code
+                    string errorMessage = "Unknown error";
+
+                    // Try to parse error message from response
+                    try
+                    {
+                        using (JsonDocument doc = JsonDocument.Parse(content))
+                        {
+                            if (doc.RootElement.TryGetProperty("message", out JsonElement messageElement) &&
+                                messageElement.ValueKind == JsonValueKind.String)
+                            {
+                                errorMessage = messageElement.GetString() ?? string.Empty;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // If parsing fails, use status code description
+                        errorMessage = $"Error: {response.StatusCode}";
+                    }
+
+                    // Log specific error details based on status code
+                    switch ((int)response.StatusCode)
+                    {
+                        case 400:
+                            _logger?.LogWarning($"Bad request when updating player {uid}: {errorMessage}");
+                            break;
+                        case 401:
+                            _logger?.LogWarning($"Unauthorized request when updating player {uid}: API key may be invalid");
+                            break;
+                        case 404:
+                            _logger?.LogWarning($"Player not found when updating player {uid}");
+                            break;
+                        case 429:
+                            _logger?.LogWarning($"Rate limit exceeded when updating player {uid}: Player may already have a pending update");
+                            break;
+                        case 500:
+                            _logger?.LogError($"Server error when updating player {uid}: {errorMessage}");
+                            break;
+                        default:
+                            _logger?.LogWarning($"Error updating player {uid}: Status {response.StatusCode}, {errorMessage}");
+                            break;
+                    }
+
+                    return (false, errorMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, $"Exception when requesting update for player {uid}: {ex.Message}");
+                return (false, $"Error: {ex.Message}");
+            }
+
+        }
     }
 }
 

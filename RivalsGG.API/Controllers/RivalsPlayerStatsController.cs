@@ -156,6 +156,111 @@ namespace RivalsGG.API.Controllers
                 return StatusCode(500, $"Error retrieving player name: {ex.Message}");
             }
         }
+        [HttpGet("updates/{uid}")]
+        public async Task<ActionResult<object>> GetPlayerUpdateInfo(string uid)
+        {
+            try
+            {
+                _logger.LogInformation($"Updating UID: {uid}");
 
+                if (string.IsNullOrWhiteSpace(uid))
+                {
+                    return BadRequest("Bad UID");
+                }
+
+                var playerStats = await _marvelApiClient.GetPlayerByUidAsync(uid);
+
+                if (playerStats == null || string.IsNullOrWhiteSpace(playerStats.Name))
+                {
+                    _logger.LogWarning($"No player with UID: {uid}");
+                    return NotFound($"No player with UID: {uid}");
+                }
+
+                var updateInfo = new
+                {
+                    uid = playerStats.Uid,
+                    username = playerStats.Name,
+                    infoUpdateTime = playerStats.Updates?.InfoUpdateTime,
+                    lastHistoryUpdate = playerStats.Updates?.LastHistoryUpdate,
+                    lastInsertedMatch = playerStats.Updates?.LastInsertedMatch,
+                    lastUpdateRequest = playerStats.Updates?.LastUpdateRequest,
+                };
+
+                return Ok(updateInfo);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error calling UID {uid}: {ex.Message}");
+                return StatusCode(500, $"Error calling player: {ex.Message}");
+            }
+        }
+
+        [HttpGet("update/{uid}")]
+        public async Task<ActionResult<object>> RequestPlayerUpdate(string uid)
+        {
+            try
+            {
+                _logger.LogInformation($"Updating UID: {uid}");
+
+                if (string.IsNullOrWhiteSpace(uid))
+                {
+                    return BadRequest("Player UID is needed");
+                }
+
+                var playerExists = await _marvelApiClient.GetPlayerNameByUidAsync(uid);
+                if (string.IsNullOrWhiteSpace(playerExists))
+                {
+                    _logger.LogWarning($"No player with UID: {uid}");
+                    return NotFound($"No player found with UID: {uid}");
+                }
+
+                var playerStats = await _marvelApiClient.GetPlayerByUidAsync(uid);
+                string lastUpdateRequest = playerStats?.Updates?.LastUpdateRequest ?? string.Empty;
+
+                bool recentUpdateRequested = false;
+                if (!string.IsNullOrEmpty(lastUpdateRequest) &&
+                    DateTime.TryParse(lastUpdateRequest, out DateTime lastUpdate))
+                {
+                    TimeSpan timeSinceLastUpdate = DateTime.Now - lastUpdate;
+                    if (timeSinceLastUpdate.TotalMinutes < 30)
+                    {
+                        recentUpdateRequested = true;
+                        _logger.LogWarning($"Update for player {uid} was requested {timeSinceLastUpdate.TotalMinutes:F1} minutes ago");
+                    }
+                }
+
+                var (success, message) = await _marvelApiClient.RequestPlayerDataUpdate(uid);
+
+                var result = new
+                {
+                    uid = uid,
+                    username = playerStats?.Name ?? playerExists,
+                    success = success,
+                    message = message,
+                    lastUpdateRequest = lastUpdateRequest,
+                    warning = recentUpdateRequested ?
+                        "Player data was already requested to be updated within the last 30 minutes" : null
+                };
+
+
+                if (success)
+                {
+                    return Ok(result);
+                }
+                else if (message.Contains("429") || message.Contains("rate limit"))
+                {
+                    return StatusCode(429, result);
+                }
+                else
+                {
+                    return BadRequest(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error requesting player update for UID {uid}: {ex.Message}");
+                return StatusCode(500, $"Error requesting player update: {ex.Message}");
+            }
+        }
     }
 }

@@ -23,6 +23,8 @@ namespace RivalsGG.Core.Models
 
         [JsonPropertyName("overall_stats")]
         public OverallStats? OverallStats { get; set; }
+        [JsonPropertyName("updates")]
+        public UpdatesInfo? Updates { get; set; }
 
         public string Rank { get; set; } = string.Empty;
         public int Level { get; set; }
@@ -82,5 +84,18 @@ namespace RivalsGG.Core.Models
         [JsonPropertyName("total_wins")]
         public int TotalWins { get; set; }
     }
+    public class UpdatesInfo
+    {
+        [JsonPropertyName("info_update_time")]
+        public string InfoUpdateTime { get; set; } = string.Empty;
 
+        [JsonPropertyName("last_history_update")]
+        public string? LastHistoryUpdate { get; set; }
+
+        [JsonPropertyName("last_inserted_match")]
+        public string? LastInsertedMatch { get; set; }
+
+        [JsonPropertyName("last_update_request")]
+        public string? LastUpdateRequest { get; set; }
+    }
 }
