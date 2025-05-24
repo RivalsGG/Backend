@@ -22,7 +22,7 @@ namespace RivalsGG.API.Controllers
                 return Ok(heroes);
             }
 
-            [HttpGet("{id}")]
+            [HttpGet("{id:int}")]
             public async Task<ActionResult<MarvelHero>> GetHero(string id)
             {
                 var hero = await _marvelApiClient.GetHeroByIdAsync(id);
