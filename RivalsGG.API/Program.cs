@@ -3,8 +3,16 @@ using RivalsGG.DAL.Data;
 using RivalsGG.Core.Interfaces;
 using RivalsGG.DAL.Repositories;
 using RivalsGG.BLL.Services;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+
+if (isDocker)
+{
+    builder.Configuration.AddJsonFile("appsettings.Docker.json", optional: false);
+}
 
 // Add services to the container.
 
@@ -18,6 +26,7 @@ builder.Services.AddDbContext<PlayerDbContext>(options =>
 
 builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
 builder.Services.AddScoped<IPlayerService, PlayerService>();
+builder.Services.AddHttpClient<MarvelApiClient>();
 
 builder.Services.AddCors(options =>
 {
@@ -30,6 +39,21 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<PlayerDbContext>();
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating the database.");
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
