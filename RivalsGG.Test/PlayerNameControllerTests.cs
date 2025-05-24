@@ -44,7 +44,7 @@ namespace RivalsGG.Test
         public async Task GetPlayerNameByUid_WithGoodUid_ReturnsOkWithPlayerName()
         {
             // Arrange
-            var uid = "gg";
+            var uid = "123123";
             var expectedName = "TestPlayer";
 
             var playerResponse = new { uid = uid, name = expectedName };
