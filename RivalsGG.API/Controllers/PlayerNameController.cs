@@ -29,6 +29,10 @@ namespace RivalsGG.API.Controllers
                 {
                     return BadRequest("A valid player UID is required");
                 }
+                if (!uid.All(char.IsDigit))
+                {
+                    return BadRequest("UID can only be number");
+                }
 
                 var playerName = await _marvelApiClient.GetPlayerNameByUidAsync(uid);
 

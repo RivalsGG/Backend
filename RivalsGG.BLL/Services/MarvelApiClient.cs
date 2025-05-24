@@ -140,7 +140,6 @@ namespace RivalsGG.BLL.Services
 
                 var content = await response.Content.ReadAsStringAsync();
 
-                // If the request was successful, parse the response
                 if (response.IsSuccessStatusCode)
                 {
                     using (JsonDocument doc = JsonDocument.Parse(content))
@@ -166,10 +165,8 @@ namespace RivalsGG.BLL.Services
                 }
                 else
                 {
-                    // Handle the specific error cases based on status code
                     string errorMessage = "Unknown error";
 
-                    // Try to parse error message from response
                     try
                     {
                         using (JsonDocument doc = JsonDocument.Parse(content))
@@ -183,11 +180,9 @@ namespace RivalsGG.BLL.Services
                     }
                     catch
                     {
-                        // If parsing fails, use status code description
                         errorMessage = $"Error: {response.StatusCode}";
                     }
 
-                    // Log specific error details based on status code
                     switch ((int)response.StatusCode)
                     {
                         case 400:

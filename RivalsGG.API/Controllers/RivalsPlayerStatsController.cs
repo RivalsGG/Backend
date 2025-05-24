@@ -30,6 +30,10 @@ namespace RivalsGG.API.Controllers
                 {
                     return BadRequest("Valid player UID missing");
                 }
+                if (!uid.All(char.IsDigit))
+                {
+                    return BadRequest("UID must contain only numeric characters");
+                }
 
                 var playerStats = await _marvelApiClient.GetPlayerByUidAsync(uid);
 
@@ -73,7 +77,7 @@ namespace RivalsGG.API.Controllers
             }
         }
 
-        [HttpGet("summary/{uid}")]
+        [HttpGet("summary/{uid:long}")]
         public async Task<ActionResult<object>> GetPlayerSummary(string uid)
         {
             try
@@ -85,7 +89,6 @@ namespace RivalsGG.API.Controllers
                     return BadRequest("A valid player UID is required");
                 }
 
-                // Get full player stats
                 var playerStats = await _marvelApiClient.GetPlayerByUidAsync(uid);
 
                 if (playerStats == null || string.IsNullOrWhiteSpace(playerStats.Name))
@@ -129,7 +132,7 @@ namespace RivalsGG.API.Controllers
             }
         }
 
-        [HttpGet("name/{uid}")]
+        [HttpGet("name/{uid:long}")]
         public async Task<ActionResult<object>> GetPlayerName(string uid)
         {
             try
@@ -156,7 +159,7 @@ namespace RivalsGG.API.Controllers
                 return StatusCode(500, $"Error retrieving player name: {ex.Message}");
             }
         }
-        [HttpGet("updates/{uid}")]
+        [HttpGet("updates/{uid:long}")]
         public async Task<ActionResult<object>> GetPlayerUpdateInfo(string uid)
         {
             try
@@ -195,7 +198,7 @@ namespace RivalsGG.API.Controllers
             }
         }
 
-        [HttpGet("update/{uid}")]
+        [HttpGet("update/{uid:long}")]
         public async Task<ActionResult<object>> RequestPlayerUpdate(string uid)
         {
             try
