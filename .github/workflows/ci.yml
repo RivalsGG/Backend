@@ -97,3 +97,5 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          MARVEL_API_KEY=${{ secrets.MARVEL_API_KEY }}
