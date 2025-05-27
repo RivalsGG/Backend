@@ -26,6 +26,7 @@ ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "RivalsGG.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish --no-restore
 
 FROM base AS final
+ARG MARVEL_API_KEY
 WORKDIR /app
 COPY --from=publish /app/publish .
 
