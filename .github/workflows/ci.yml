@@ -1,4 +1,29 @@
-name: .NET CI/CD with Docker
+    - name: Generate Coverage Reports 
+      run: |
+        echo "Searching for TestResults directories anywhere in the repo:"
+        find . -name "TestResults" -type d
+        
+        echo "Searching for coverage XML files anywhere:"
+        COVERAGE_FILES=$(find . -name "*coverage*.xml" -type f)
+        echo "Found coverage files: $COVERAGE_FILES"
+        
+        if [ -n "$COVERAGE_FILES" ]; then
+          mkdir -p ./TestResults/CoverageReport
+          
+          echo "Generating coverage report using found files..."
+          reportgenerator \
+            -reports:"$(find . -name "*coverage*.xml" -type f | tr '\n' ';')" \
+            -targetdir:"./TestResults/CoverageReport" \
+            -reporttypes:"Cobertura;Html" \
+            -verbosity:Info
+            
+          echo "Coverage report generated. Contents:"
+          ls -la ./TestResults/CoverageReport/ || echo "CoverageReport directory not found"
+        else
+          echo "No coverage files found anywhere in the repository"
+          echo "Full directory tree:"
+          find . -type f -name "*.xml" | head -20
+        finame: .NET CI/CD with Docker
 
 on:
   push:
@@ -55,29 +80,50 @@ jobs:
     
     - name: Test with Coverage
       run: |
-        TEST_PROJECTS=$(find . -name "*Tests.csproj" -o -name "*Test.csproj")
+        # Debug: Show current directory and structure
+        echo "Current working directory: $(pwd)"
+        echo "Repository structure:"
+        find . -maxdepth 2 -type f -name "*.csproj" -o -name "*.sln"
+        
+        # Find test projects
+        TEST_PROJECTS=$(find . -name "*Test*.csproj")
+        echo "Found test projects: $TEST_PROJECTS"
+        
         if [ -z "$TEST_PROJECTS" ]; then
           echo "No test projects found, skipping tests"
         else
+          # Use the repository root for TestResults (not inside test project)
+          RESULTS_DIR="$(pwd)/TestResults"
+          echo "Results will be saved to: $RESULTS_DIR"
+          
           # Run tests with coverage for the solution
           SOLUTION_FILE=$(find . -name "*.sln" | head -n 1)
+          echo "Using solution file: $SOLUTION_FILE"
+          
           if [ -n "$SOLUTION_FILE" ]; then
+            echo "Running tests with coverage on solution..."
             dotnet test "$SOLUTION_FILE" \
               --no-build \
               --verbosity normal \
               --collect:"XPlat Code Coverage" \
-              --results-directory ./TestResults
+              --results-directory "$RESULTS_DIR"
           else
-            # Fallback to individual test projects
+            # Fallback to individual test projects  
             for TEST_PROJECT in $TEST_PROJECTS; do
               echo "Testing $TEST_PROJECT"
               dotnet test "$TEST_PROJECT" \
                 --no-build \
                 --verbosity normal \
                 --collect:"XPlat Code Coverage" \
-                --results-directory ./TestResults
+                --results-directory "$RESULTS_DIR"
             done
           fi
+          
+          # Debug: Show what was actually generated anywhere
+          echo "Searching for any TestResults directories:"
+          find . -name "TestResults" -type d
+          echo "Searching for any coverage XML files:"
+          find . -name "*coverage*.xml" -type f
         fi
 
     - name: Install ReportGenerator
@@ -85,31 +131,52 @@ jobs:
       
     - name: Generate Coverage Reports
       run: |
+        echo "Checking for TestResults directory..."
         if [ -d "./TestResults" ]; then
+          echo "TestResults directory found. Contents:"
+          find TestResults -type f -name "*.xml"
+          
+          echo "Looking for coverage files..."
+          find TestResults -name "*coverage*.xml" -type f
+          
+          echo "Generating coverage report..."
           reportgenerator \
             -reports:"TestResults/**/coverage.cobertura.xml" \
             -targetdir:"TestResults/CoverageReport" \
-            -reporttypes:"Cobertura;Html"
+            -reporttypes:"Cobertura;Html" \
+            -verbosity:Info
+            
+          echo "Coverage report generated. Contents:"
+          ls -la TestResults/CoverageReport/ || echo "CoverageReport directory not found"
         else
-          echo "No test results found, skipping coverage report generation"
+          echo "No TestResults directory found, skipping coverage report generation"
+          echo "Current directory contents:"
+          ls -la
         fi
 
     - name: Upload Coverage to Codacy
       if: env.CODACY_PROJECT_TOKEN != null
-      uses: codacy/codacy-coverage-reporter-action@v1
-      with:
-        project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
-        coverage-reports: TestResults/CoverageReport/Cobertura.xml
+      run: |
+        echo "Searching for coverage files..."
+        COVERAGE_FILES=$(find . -name "*coverage*.xml" -type f)
+        echo "Found coverage files: $COVERAGE_FILES"
+        
+        if [ -n "$COVERAGE_FILES" ]; then
+          # Set up Codacy environment variable
+          export CODACY_PROJECT_TOKEN="${{ secrets.CODACY_PROJECT_TOKEN }}"
+          
+          # Use Codacy's official coverage reporter
+          echo "Downloading and running Codacy Coverage Reporter..."
+          bash <(curl -Ls https://coverage.codacy.com/get.sh)
+        else
+          echo "No coverage files found, skipping Codacy upload"
+        fi
       continue-on-error: true
 
     - name: Upload Coverage to Codacy (Alternative)
       if: failure() && env.CODACY_PROJECT_TOKEN != null
       run: |
-        if [ -f "TestResults/CoverageReport/Cobertura.xml" ]; then
-          curl -Ls -o codacy-coverage-reporter "$(curl -Ls https://api.github.com/repos/codacy/codacy-coverage-reporter/releases/latest | jq -r '.assets | map({name, browser_download_url} | select(.name | contains("codacy-coverage-reporter-linux"))) | .[0].browser_download_url')"
-          chmod +x codacy-coverage-reporter
-          ./codacy-coverage-reporter report -r TestResults/CoverageReport/Cobertura.xml -t ${{ secrets.CODACY_PROJECT_TOKEN }}
-        fi
+        echo "Alternative method failed - Codacy's official reporter should have worked above"
       continue-on-error: true
         
     - name: Upload Test Results
