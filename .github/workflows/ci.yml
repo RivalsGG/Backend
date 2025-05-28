@@ -1,29 +1,4 @@
-    - name: Generate Coverage Reports 
-      run: |
-        echo "Searching for TestResults directories anywhere in the repo:"
-        find . -name "TestResults" -type d
-        
-        echo "Searching for coverage XML files anywhere:"
-        COVERAGE_FILES=$(find . -name "*coverage*.xml" -type f)
-        echo "Found coverage files: $COVERAGE_FILES"
-        
-        if [ -n "$COVERAGE_FILES" ]; then
-          mkdir -p ./TestResults/CoverageReport
-          
-          echo "Generating coverage report using found files..."
-          reportgenerator \
-            -reports:"$(find . -name "*coverage*.xml" -type f | tr '\n' ';')" \
-            -targetdir:"./TestResults/CoverageReport" \
-            -reporttypes:"Cobertura;Html" \
-            -verbosity:Info
-            
-          echo "Coverage report generated. Contents:"
-          ls -la ./TestResults/CoverageReport/ || echo "CoverageReport directory not found"
-        else
-          echo "No coverage files found anywhere in the repository"
-          echo "Full directory tree:"
-          find . -type f -name "*.xml" | head -20
-        finame: .NET CI/CD with Docker
+name: .NET CI/CD with Docker
 
 on:
   push:
@@ -92,7 +67,7 @@ jobs:
         if [ -z "$TEST_PROJECTS" ]; then
           echo "No test projects found, skipping tests"
         else
-          # Use the repository root for TestResults (not inside test project)
+          # Use the repository root for TestResults
           RESULTS_DIR="$(pwd)/TestResults"
           echo "Results will be saved to: $RESULTS_DIR"
           
@@ -126,57 +101,15 @@ jobs:
           find . -name "*coverage*.xml" -type f
         fi
 
-    - name: Install ReportGenerator
-      run: dotnet tool install -g dotnet-reportgenerator-globaltool
-      
-    - name: Generate Coverage Reports
-      run: |
-        echo "Checking for TestResults directory..."
-        if [ -d "./TestResults" ]; then
-          echo "TestResults directory found. Contents:"
-          find TestResults -type f -name "*.xml"
-          
-          echo "Looking for coverage files..."
-          find TestResults -name "*coverage*.xml" -type f
-          
-          echo "Generating coverage report..."
-          reportgenerator \
-            -reports:"TestResults/**/coverage.cobertura.xml" \
-            -targetdir:"TestResults/CoverageReport" \
-            -reporttypes:"Cobertura;Html" \
-            -verbosity:Info
-            
-          echo "Coverage report generated. Contents:"
-          ls -la TestResults/CoverageReport/ || echo "CoverageReport directory not found"
-        else
-          echo "No TestResults directory found, skipping coverage report generation"
-          echo "Current directory contents:"
-          ls -la
-        fi
-
     - name: Upload Coverage to Codacy
-      if: env.CODACY_PROJECT_TOKEN != null
       run: |
         echo "Searching for coverage files..."
-        COVERAGE_FILES=$(find . -name "*coverage*.xml" -type f)
-        echo "Found coverage files: $COVERAGE_FILES"
-        
-        if [ -n "$COVERAGE_FILES" ]; then
-          # Set up Codacy environment variable
-          export CODACY_PROJECT_TOKEN="${{ secrets.CODACY_PROJECT_TOKEN }}"
-          
-          # Use Codacy's official coverage reporter
-          echo "Downloading and running Codacy Coverage Reporter..."
-          bash <(curl -Ls https://coverage.codacy.com/get.sh)
-        else
-          echo "No coverage files found, skipping Codacy upload"
-        fi
-      continue-on-error: true
-
-    - name: Upload Coverage to Codacy (Alternative)
-      if: failure() && env.CODACY_PROJECT_TOKEN != null
-      run: |
-        echo "Alternative method failed - Codacy's official reporter should have worked above"
+        find . -name "*coverage*.xml" -type f
+ 
+        export CODACY_PROJECT_TOKEN="${{ secrets.CODACY_PROJECT_TOKEN }}"
+      
+        echo "Downloading and running Codacy Coverage Reporter..."
+        bash <(curl -Ls https://coverage.codacy.com/get.sh)
       continue-on-error: true
         
     - name: Upload Test Results
