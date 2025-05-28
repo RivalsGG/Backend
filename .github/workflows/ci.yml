@@ -104,12 +104,20 @@ jobs:
     - name: Upload Coverage to Codacy
       run: |
         echo "Searching for coverage files..."
-        find . -name "*coverage*.xml" -type f
- 
-        export CODACY_PROJECT_TOKEN="${{ secrets.CODACY_PROJECT_TOKEN }}"
-      
-        echo "Downloading and running Codacy Coverage Reporter..."
-        bash <(curl -Ls https://coverage.codacy.com/get.sh)
+        COVERAGE_FILES=$(find . -name "*coverage*.xml" -type f)
+        echo "Found coverage files: $COVERAGE_FILES"
+        
+        if [ -n "$COVERAGE_FILES" ]; then
+          export CODACY_PROJECT_TOKEN="${{ secrets.CODACY_PROJECT_TOKEN }}"
+
+          COVERAGE_FILE=$(echo "$COVERAGE_FILES" | head -1)
+          echo "Using coverage file: $COVERAGE_FILE"
+
+          echo "Downloading and running Codacy Coverage Reporter..."
+          bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r "$COVERAGE_FILE"
+        else
+          echo "No coverage files found, skipping Codacy upload"
+        fi
       continue-on-error: true
         
     - name: Upload Test Results
