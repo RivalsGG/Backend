@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    with:
+        fetch-depth: 0 
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
@@ -51,17 +53,71 @@ jobs:
           dotnet build "$SOLUTION_FILE" --no-restore
         fi
     
-    - name: Test
+    - name: Test with Coverage
       run: |
         TEST_PROJECTS=$(find . -name "*Tests.csproj" -o -name "*Test.csproj")
         if [ -z "$TEST_PROJECTS" ]; then
           echo "No test projects found, skipping tests"
         else
-          for TEST_PROJECT in $TEST_PROJECTS; do
-            echo "Testing $TEST_PROJECT"
-            dotnet test "$TEST_PROJECT" --no-build --verbosity normal
-          done
+          # Run tests with coverage for the solution
+          SOLUTION_FILE=$(find . -name "*.sln" | head -n 1)
+          if [ -n "$SOLUTION_FILE" ]; then
+            dotnet test "$SOLUTION_FILE" \
+              --no-build \
+              --verbosity normal \
+              --collect:"XPlat Code Coverage" \
+              --results-directory ./TestResults
+          else
+            # Fallback to individual test projects
+            for TEST_PROJECT in $TEST_PROJECTS; do
+              echo "Testing $TEST_PROJECT"
+              dotnet test "$TEST_PROJECT" \
+                --no-build \
+                --verbosity normal \
+                --collect:"XPlat Code Coverage" \
+                --results-directory ./TestResults
+            done
+          fi
         fi
+
+    - name: Install ReportGenerator
+      run: dotnet tool install -g dotnet-reportgenerator-globaltool
+      
+    - name: Generate Coverage Reports
+      run: |
+        if [ -d "./TestResults" ]; then
+          reportgenerator \
+            -reports:"TestResults/**/coverage.cobertura.xml" \
+            -targetdir:"TestResults/CoverageReport" \
+            -reporttypes:"Cobertura;Html"
+        else
+          echo "No test results found, skipping coverage report generation"
+        fi
+
+    - name: Upload Coverage to Codacy
+      if: env.CODACY_PROJECT_TOKEN != null
+      uses: codacy/codacy-coverage-reporter-action@v1
+      with:
+        project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+        coverage-reports: TestResults/CoverageReport/Cobertura.xml
+      continue-on-error: true  
+    - name: Upload Coverage to Codacy (Alternative)
+      if: failure() && env.CODACY_PROJECT_TOKEN != null
+      run: |
+        if [ -f "TestResults/CoverageReport/Cobertura.xml" ]; then
+          curl -Ls -o codacy-coverage-reporter "$(curl -Ls https://api.github.com/repos/codacy/codacy-coverage-reporter/releases/latest | jq -r '.assets | map({name, browser_download_url} | select(.name | contains("codacy-coverage-reporter-linux"))) | .[0].browser_download_url')"
+          chmod +x codacy-coverage-reporter
+          ./codacy-coverage-reporter report -r TestResults/CoverageReport/Cobertura.xml -t ${{ secrets.CODACY_PROJECT_TOKEN }}
+        fi
+      continue-on-error: true
+        
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-coverage-results
+        path: TestResults/
+        retention-days: 30
 
   docker-build-and-push:
     runs-on: ubuntu-latest
