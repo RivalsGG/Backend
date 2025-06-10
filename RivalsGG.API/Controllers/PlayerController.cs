@@ -2,6 +2,9 @@
 using RivalsGG.Core.Interfaces;
 using RivalsGG.Core.Models;
 using RivalsGG.Core.DTOs;
+using Microsoft.AspNetCore.SignalR;
+using RivalsGG.API.Hubs;
+using Microsoft.EntityFrameworkCore;
 
 namespace RivalsGG.API.Controllers
 {
@@ -10,10 +13,12 @@ namespace RivalsGG.API.Controllers
     public class PlayerController : ControllerBase
     {
         private readonly IPlayerService _playerService;
+        private readonly IHubContext<Playerhub> _hubContext;
 
-        public PlayerController(IPlayerService playerService)
+        public PlayerController(IPlayerService playerService, IHubContext<Playerhub> hubContext)
         {
             _playerService = playerService;
+            _hubContext = hubContext;
         }
 
         [HttpGet]
@@ -40,6 +45,8 @@ namespace RivalsGG.API.Controllers
         public async Task<ActionResult<PlayerDTO>> CreatePlayer(PlayerDTO playerDto)
         {
             var createdPlayer = await _playerService.CreatePlayerAsync(playerDto);
+            await _hubContext.Clients.Group("PlayerUpdates")
+            .SendAsync("PlayerCreated", createdPlayer);
             return CreatedAtAction(nameof(GetPlayer), new { id = createdPlayer.PlayerId }, createdPlayer);
         }
 
@@ -54,6 +61,8 @@ namespace RivalsGG.API.Controllers
             try
             {
                 await _playerService.UpdatePlayerAsync(playerDto);
+                await _hubContext.Clients.Group("PlayerUpdates")
+                    .SendAsync("PlayerUpdated", playerDto);
                 return NoContent();
             }
             catch (KeyNotFoundException)
@@ -68,6 +77,8 @@ namespace RivalsGG.API.Controllers
             try
             {
                 await _playerService.DeletePlayerAsync(id);
+                await _hubContext.Clients.Group("PlayerUpdates")
+                .SendAsync("PlayerDeleted", id);
                 return NoContent();
             }
             catch (KeyNotFoundException)

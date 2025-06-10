@@ -1,40 +1,45 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Moq;
 using RivalsGG.API.Controllers;
+using RivalsGG.API.Hubs;
 using RivalsGG.Core.DTOs;
 using RivalsGG.Core.Interfaces;
-using RivalsGG.Core.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace RivalsGG.Test
+namespace RivalsGG.Tests.Controllers
 {
-    public class PlayersControllerTests
+    public class PlayerControllerTests
     {
-        private readonly Mock<IPlayerService> _mockService;
+        private readonly Mock<IPlayerService> _mockPlayerService;
+        private readonly Mock<IHubContext<Playerhub>> _mockHubContext;
+        private readonly Mock<IHubClients> _mockClients;
+        private readonly Mock<IClientProxy> _mockClientProxy;
         private readonly PlayerController _controller;
 
-        public PlayersControllerTests()
+        public PlayerControllerTests()
         {
-            _mockService = new Mock<IPlayerService>();
-            _controller = new PlayerController(_mockService.Object);
+            _mockPlayerService = new Mock<IPlayerService>();
+            _mockHubContext = new Mock<IHubContext<Playerhub>>();
+            _mockClients = new Mock<IHubClients>();
+            _mockClientProxy = new Mock<IClientProxy>();
+
+            // Setup for signalR
+            _mockHubContext.Setup(h => h.Clients).Returns(_mockClients.Object);
+            _mockClients.Setup(c => c.Group(It.IsAny<string>())).Returns(_mockClientProxy.Object);
+
+            _controller = new PlayerController(_mockPlayerService.Object, _mockHubContext.Object);
         }
 
         [Fact]
-        public async Task GetPlayers_ReturnsOkWithPlayers()
+        public async Task GetPlayers_ReturnsOkResult_WithListOfPlayers()
         {
             // Arrange
             var players = new List<PlayerDTO>
             {
-                new PlayerDTO { PlayerId = 1, PlayerName = "Player1", PlayerColor = "#FF0000" },
-                new PlayerDTO { PlayerId = 2, PlayerName = "Player2", PlayerColor = "#00FF00" }
+                new PlayerDTO { PlayerId = 1, PlayerName = "Player 1" },
+                new PlayerDTO { PlayerId = 2, PlayerName = "Player 2" }
             };
-
-            _mockService.Setup(service => service.GetAllPlayersAsync())
-                .ReturnsAsync(players);
+            _mockPlayerService.Setup(s => s.GetAllPlayersAsync()).ReturnsAsync(players);
 
             // Act
             var result = await _controller.GetPlayers();
@@ -46,103 +51,131 @@ namespace RivalsGG.Test
         }
 
         [Fact]
-        public async Task GetPlayer_WithValidId_ReturnsOkWithPlayer()
+        public async Task GetPlayer_WithValidId_ReturnsOkResult()
         {
             // Arrange
-            var player = new PlayerDTO { PlayerId = 1, PlayerName = "TestPlayer", PlayerColor = "#FF0000" };
-
-            _mockService.Setup(service => service.GetPlayerByIdAsync(1))
-                .ReturnsAsync(player);
+            var playerId = 1;
+            var player = new PlayerDTO { PlayerId = playerId, PlayerName = "Test Player" };
+            _mockPlayerService.Setup(s => s.GetPlayerByIdAsync(playerId)).ReturnsAsync(player);
 
             // Act
-            var result = await _controller.GetPlayer(1);
+            var result = await _controller.GetPlayer(playerId);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var returnedPlayer = Assert.IsType<PlayerDTO>(okResult.Value);
-            Assert.Equal(1, returnedPlayer.PlayerId);
+            Assert.Equal(playerId, returnedPlayer.PlayerId);
         }
 
         [Fact]
         public async Task GetPlayer_WithInvalidId_ReturnsNotFound()
         {
             // Arrange
-            _mockService.Setup(service => service.GetPlayerByIdAsync(999))
-                .ReturnsAsync((PlayerDTO)null);
+            var playerId = 999;
+            _mockPlayerService.Setup(s => s.GetPlayerByIdAsync(playerId)).ReturnsAsync((PlayerDTO?)null);
 
             // Act
-            var result = await _controller.GetPlayer(999);
+            var result = await _controller.GetPlayer(playerId);
 
             // Assert
             Assert.IsType<NotFoundResult>(result.Result);
         }
 
         [Fact]
-        public async Task CreatePlayer_ReturnsCreatedAtAction()
+        public async Task CreatePlayer_ValidPlayer_ReturnsCreatedResult_AndBroadcastsSignalR()
         {
             // Arrange
-            var playerToCreate = new PlayerDTO
-            {
-                PlayerName = "NewPlayer",
-                PlayerColor = "#FF0000"
-            };
-
-            var createdPlayer = new PlayerDTO
-            {
-                PlayerId = 1,
-                PlayerName = "NewPlayer",
-                PlayerColor = "#FF0000"
-            };
-
-            _mockService.Setup(service => service.CreatePlayerAsync(It.IsAny<PlayerDTO>()))
-                .ReturnsAsync(createdPlayer);
+            var newPlayer = new PlayerDTO { PlayerId = 1, PlayerName = "New Player" };
+            _mockPlayerService.Setup(s => s.CreatePlayerAsync(It.IsAny<PlayerDTO>())).ReturnsAsync(newPlayer);
 
             // Act
-            var result = await _controller.CreatePlayer(playerToCreate);
+            var result = await _controller.CreatePlayer(newPlayer);
 
             // Assert
-            var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-            Assert.Equal(nameof(PlayerController.GetPlayer), createdAtActionResult.ActionName);
-            Assert.Equal(1, createdAtActionResult.RouteValues["id"]);
+            var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+            Assert.Equal("GetPlayer", createdResult.ActionName);
+            Assert.Equal(newPlayer.PlayerId, ((PlayerDTO)createdResult.Value!).PlayerId);
 
-            var returnedPlayer = Assert.IsType<PlayerDTO>(createdAtActionResult.Value);
-            Assert.Equal(1, returnedPlayer.PlayerId);
+            // Verify SignalR started
+            _mockClientProxy.Verify(
+                c => c.SendCoreAsync("PlayerCreated", It.Is<object[]>(o => o.Length == 1), default),
+                Times.Once);
         }
 
         [Fact]
-        public async Task UpdatePlayer_WithValidId_ReturnsNoContent()
+        public async Task UpdatePlayer_ValidPlayer_ReturnsNoContent_AndBroadcastsSignalR()
         {
             // Arrange
-            var playerDto = new PlayerDTO
-            {
-                PlayerId = 1,
-                PlayerName = "UpdatedPlayer",
-                PlayerColor = "#FF0000"
-            };
-
-            _mockService.Setup(service => service.UpdatePlayerAsync(It.IsAny<PlayerDTO>()))
-                .Returns(Task.CompletedTask);
+            var playerId = 1;
+            var playerDto = new PlayerDTO { PlayerId = playerId, PlayerName = "Updated Player" };
+            _mockPlayerService.Setup(s => s.UpdatePlayerAsync(playerDto)).Returns(Task.CompletedTask);
 
             // Act
-            var result = await _controller.UpdatePlayer(1, playerDto);
+            var result = await _controller.UpdatePlayer(playerId, playerDto);
 
             // Assert
             Assert.IsType<NoContentResult>(result);
+
+            // Verify service was called
+            _mockPlayerService.Verify(s => s.UpdatePlayerAsync(playerDto), Times.Once);
+
+            // Verify SignalR started
+            _mockClientProxy.Verify(
+                c => c.SendCoreAsync("PlayerUpdated", It.Is<object[]>(o => o.Length == 1), default),
+                Times.Once);
         }
 
         [Fact]
-        public async Task DeletePlayer_ReturnsNoContent()
+        public async Task UpdatePlayer_PlayerNotFound_ReturnsNotFound()
         {
             // Arrange
-            int playerId = 1;
-            _mockService.Setup(service => service.DeletePlayerAsync(playerId))
-                .Returns(Task.CompletedTask);
+            var playerId = 999;
+            var playerDto = new PlayerDTO { PlayerId = playerId, PlayerName = "Non-existent Player" };
+            _mockPlayerService.Setup(s => s.UpdatePlayerAsync(playerDto)).ThrowsAsync(new KeyNotFoundException());
+
+            // Act
+            var result = await _controller.UpdatePlayer(playerId, playerDto);
+
+            // Assert
+            Assert.IsType<NotFoundResult>(result);
+        }
+
+        [Fact]
+        public async Task DeletePlayer_ValidId_ReturnsNoContent_AndBroadcastsSignalR()
+        {
+            // Arrange
+            var playerId = 1;
+            var player = new PlayerDTO { PlayerId = playerId, PlayerName = "Player to Delete" };
+            _mockPlayerService.Setup(s => s.GetPlayerByIdAsync(playerId)).ReturnsAsync(player);
+            _mockPlayerService.Setup(s => s.DeletePlayerAsync(playerId)).Returns(Task.CompletedTask);
 
             // Act
             var result = await _controller.DeletePlayer(playerId);
 
             // Assert
             Assert.IsType<NoContentResult>(result);
+
+            // Verify service was called
+            _mockPlayerService.Verify(s => s.DeletePlayerAsync(playerId), Times.Once);
+
+            // Verify SignalR started
+            _mockClientProxy.Verify(
+                c => c.SendCoreAsync("PlayerDeleted", It.Is<object[]>(o => o.Length == 1), default),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task DeletePlayer_PlayerNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            var playerId = 999;
+            _mockPlayerService.Setup(s => s.DeletePlayerAsync(playerId)).ThrowsAsync(new KeyNotFoundException());
+
+            // Act
+            var result = await _controller.DeletePlayer(playerId);
+
+            // Assert
+            Assert.IsType<NotFoundResult>(result);
         }
     }
 }

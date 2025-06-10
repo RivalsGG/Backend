@@ -3,6 +3,7 @@ using RivalsGG.DAL.Data;
 using RivalsGG.Core.Interfaces;
 using RivalsGG.DAL.Repositories;
 using RivalsGG.BLL.Services;
+using RivalsGG.API.Hubs;
 using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,12 +16,11 @@ if (isDocker)
 }
 
 // Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddSignalR();
 builder.Services.AddDbContext<PlayerDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -30,13 +30,15 @@ builder.Services.AddHttpClient<MarvelApiClient>();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactApp",
-        builder => builder
-            .WithOrigins("http://localhost:5173") 
-            .AllowAnyMethod()
-            .AllowAnyHeader());
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials()
+              .SetIsOriginAllowed(_ => true); 
+    });
 });
-
 
 var app = builder.Build();
 
@@ -69,5 +71,6 @@ app.UseCors("AllowReactApp");
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<Playerhub>("/playerhub");
 
 app.Run();
